@@ -1,0 +1,303 @@
+esphome:
+  name: dfltech-switch
+  friendly_name: DFLTech Switch
+
+esp8266:
+  board: nodemcuv2
+
+# RX (GPIO3) is used for key 6; disable UART so serial does not conflict.
+logger:
+  baud_rate: 0
+
+api:
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "Dfltech-Switch Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+binary_sensor:
+
+  ###############################################################################
+  # KEY 1 — D1 / GPIO5
+  ###############################################################################
+
+  - platform: gpio
+    id: key_1
+    internal: true
+    pin:
+      number: GPIO5
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_multi_click:
+      - timing:
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "1"
+                action: single
+      - timing:
+          - ON for at most 250ms
+          - OFF for at most 250ms
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "1"
+                action: double
+      - timing:
+          - ON for at least 1.2s
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "1"
+                action: hold
+
+  ###############################################################################
+  # KEY 2 — D2 / GPIO4
+  ###############################################################################
+
+  - platform: gpio
+    id: key_2
+    internal: true
+    pin:
+      number: GPIO4
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_multi_click:
+      - timing:
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "2"
+                action: single
+      - timing:
+          - ON for at most 250ms
+          - OFF for at most 250ms
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "2"
+                action: double
+      - timing:
+          - ON for at least 1.2s
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "2"
+                action: hold
+
+  ###############################################################################
+  # KEY 3 — D5 / GPIO14
+  ###############################################################################
+
+  - platform: gpio
+    id: key_3
+    internal: true
+    pin:
+      number: GPIO14
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_multi_click:
+      - timing:
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "3"
+                action: single
+      - timing:
+          - ON for at most 250ms
+          - OFF for at most 250ms
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "3"
+                action: double
+      - timing:
+          - ON for at least 1.2s
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "3"
+                action: hold
+
+  ###############################################################################
+  # KEY 4 — D6 / GPIO12
+  ###############################################################################
+
+  - platform: gpio
+    id: key_4
+    internal: true
+    pin:
+      number: GPIO12
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_multi_click:
+      - timing:
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "4"
+                action: single
+      - timing:
+          - ON for at most 250ms
+          - OFF for at most 250ms
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "4"
+                action: double
+      - timing:
+          - ON for at least 1.2s
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "4"
+                action: hold
+
+  ###############################################################################
+  # KEY 5 — D7 / GPIO13
+  ###############################################################################
+
+  - platform: gpio
+    id: key_5
+    internal: true
+    pin:
+      number: GPIO13
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_multi_click:
+      - timing:
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "5"
+                action: single
+      - timing:
+          - ON for at most 250ms
+          - OFF for at most 250ms
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "5"
+                action: double
+      - timing:
+          - ON for at least 1.2s
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "5"
+                action: hold
+
+  ###############################################################################
+  # KEY 6 — RX / GPIO3 (no internal pull-up on D0; serial disabled above)
+  ###############################################################################
+
+  - platform: gpio
+    id: key_6
+    internal: true
+    pin:
+      number: GPIO3
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_multi_click:
+      - timing:
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "6"
+                action: single
+      - timing:
+          - ON for at most 250ms
+          - OFF for at most 250ms
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "6"
+                action: double
+      - timing:
+          - ON for at least 1.2s
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "6"
+                action: hold

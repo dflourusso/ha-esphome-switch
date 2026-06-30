@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  esphome:
+    container_name: esphome
+    image: ghcr.io/esphome/esphome:latest
+    # network_mode: host
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - 6052:6052
+    # USB serial passthrough works on Linux only. On macOS, compile in Docker
+    # then flash via web.esphome.io or host esptool; use OTA for updates after.
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    volumes:
+      - /Users/dflourusso/projects/automation/esphome-switch/container-config:/config
+      - /etc/localtime:/etc/localtime:ro
