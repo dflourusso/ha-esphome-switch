@@ -4,7 +4,7 @@ packages:
 esphome:
   project:
     name: dflourusso.dfltech-switch
-    version: 1.0.4
+    version: 1.0.5
 
 http_request:
   verify_ssl: false
