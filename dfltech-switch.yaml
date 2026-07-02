@@ -1,6 +1,8 @@
 esphome:
   name: dfltech-switch
   friendly_name: DFLTech Switch
+  name_add_mac_suffix: true
+  min_version: 2026.6.0
 
 esp8266:
   board: nodemcuv2
@@ -11,20 +13,34 @@ logger:
 
 api:
 
-ota:
-  - platform: esphome
-    password: !secret ota_password
-
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
   ap:
-    ssid: "Dfltech-Switch Fallback"
-    password: !secret ap_password
+    password: "dfltech-setup"
+    ap_timeout: 0s
 
 captive_portal:
 
+switch:
+  - platform: factory_reset
+    id: factory_reset_switch
+    internal: true
+
 binary_sensor:
+  - platform: gpio
+    id: flash_button
+    internal: true
+    pin:
+      number: GPIO0
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    on_click:
+      - min_length: 10s
+        max_length: 20s
+        then:
+          - switch.turn_on: factory_reset_switch
+
 
   ###############################################################################
   # KEY 1 — D1 / GPIO5

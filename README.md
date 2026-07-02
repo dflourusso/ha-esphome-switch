@@ -2,6 +2,8 @@
 
 ESPHome firmware for a NodeMCU ESP8266 module that reads 6 GND inputs from a custom wall switch and sends click events to Home Assistant (single, double, and hold).
 
+Distributed as a **product firmware**: flash once, provision Wi-Fi via captive portal, receive OTA updates through Home Assistant.
+
 ## Hardware
 
 | Key | NodeMCU pin | GPIO | Notes |
@@ -15,98 +17,84 @@ ESPHome firmware for a NodeMCU ESP8266 module that reads 6 GND inputs from a cus
 
 Board: **NodeMCU v2** (`nodemcuv2`). Each input is active-low (switch connects to GND). Internal pull-ups are enabled in firmware.
 
-## Prerequisites
+## End users
 
-- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
-- NodeMCU ESP8266 connected via USB (first flash only)
-- Home Assistant with the [ESPHome integration](https://www.home-assistant.io/integrations/esphome/)
+### Install firmware (first time)
 
-## Project layout
+1. Download the latest `*.factory.bin` from [GitHub Releases](https://github.com/dflourusso/ha-esphome-switch/releases), **or** use the browser installer at [dflourusso.github.io/ha-esphome-switch](https://dflourusso.github.io/ha-esphome-switch/) (Chrome/Edge, USB connected).
+2. After flashing, the device creates a Wi-Fi access point named `dfltech-switch-XXXXXX` (password: `dfltech-setup`).
+3. Connect with your phone — the captive portal opens (or open http://192.168.4.1/).
+4. Enter your home Wi-Fi credentials.
+5. In Home Assistant, add the device via **Settings → Devices & services → ESPHome** (`dfltech-switch-XXXXXX.local`).
+
+### OTA updates
+
+When a new version is published, Home Assistant shows a **Firmware** update on the device. Install from the device page or **Settings → Updates**.
+
+### Factory reset
+
+Hold the **FLASH** button (GPIO0) on the NodeMCU for **10 seconds**, then release. Wi-Fi credentials are cleared and the setup access point starts again.
+
+### Device naming
+
+Each device gets a unique hostname (`dfltech-switch-aabbcc`) from its MAC address. After adding to Home Assistant, rename the device in the ESPHome integration UI if you want a friendlier label (e.g. "Kitchen Switch").
+
+## Developers
+
+### Project layout
 
 ```
 esphome-switch/
-├── docker-compose.yml          # ESPHome dashboard + CLI container
-├── dfltech-switch.yaml         # Device config (source of truth)
-├── secrets.template.yaml       # Template for Wi-Fi / OTA credentials
-└── container-config/           # Mounted as /config inside the container
-    ├── dfltech-switch.yaml     # Copy or symlink from repo root
-    └── secrets.yaml            # Your local credentials (not committed)
+├── dfltech-switch.yaml          # Core device logic (keys, captive portal, factory reset)
+├── dfltech-switch.factory.yaml  # Distribution build (HTTP OTA + update entity)
+├── dfltech-switch.dev.yaml      # Local dev overlay (Wi-Fi from secrets)
+├── secrets.template.yaml        # Template for local secrets.yaml
+├── static/                      # GitHub Pages installer site
+└── .github/workflows/           # CI, release, and Pages deploy
 ```
 
-`container-config/` is gitignored. ESPHome reads configs from that directory at runtime.
+### Local compile
 
-## Setup
-
-### 1. Prepare the config directory
+**Factory image (what you ship):**
 
 ```bash
-mkdir -p container-config
-cp dfltech-switch.yaml container-config/
-cp secrets.template.yaml container-config/secrets.yaml
+docker run --rm -v "$PWD:/config" ghcr.io/esphome/esphome compile dfltech-switch.factory.yaml
 ```
 
-Edit `container-config/secrets.yaml` with your real values:
+Output: `.esphome/build/dfltech-switch/.pioenvs/dfltech-switch/firmware.bin` (or use the `*.factory.bin` from CI).
 
-```yaml
-wifi_ssid: "YourNetwork"
-wifi_password: "YourPassword"
-ap_password: "fallback-ap-password"
-ota_password: "your-ota-password"
-```
-
-### 2. Start the ESPHome dashboard
+**Dev build (your Wi-Fi credentials):**
 
 ```bash
-docker compose up -d
+cp secrets.template.yaml secrets.yaml
+# edit secrets.yaml
+docker run --rm -v "$PWD:/config" ghcr.io/esphome/esphome compile dfltech-switch.dev.yaml
 ```
 
-Open the dashboard at **http://localhost:6052**.
+Or with ESPHome installed locally: `esphome compile dfltech-switch.factory.yaml`
 
-### 3. Validate and compile
+### Publish a release
 
-```bash
-docker compose run --rm esphome config dfltech-switch.yaml
-docker compose run --rm esphome compile dfltech-switch.yaml
-```
+1. Go to **Actions → Release Firmware → Run workflow**.
+2. Enter a version (e.g. `1.0.0`) and optional release notes.
+3. The workflow builds firmware, creates a GitHub Release with `.factory.bin` / `.ota.bin`, and deploys GitHub Pages with the OTA manifest.
 
-Compiled firmware:
+OTA manifest URL (devices poll this): `https://dflourusso.github.io/ha-esphome-switch/firmware/manifest.json`
 
-```
-container-config/.esphome/build/dfltech-switch/.pioenvs/dfltech-switch/firmware.bin
-```
+### Flashing on macOS
 
-## Flashing the device
+Docker cannot pass USB serial reliably on macOS. Compile in Docker, then flash via:
 
-### macOS (recommended workflow)
-
-Docker on macOS cannot pass USB serial devices to containers reliably. Use this flow:
-
-1. **Compile** in Docker (see above).
-2. **First flash** via one of:
-   - [ESPHome Web](https://web.esphome.io) — upload `firmware.bin` with the NodeMCU connected over USB.
-   - **esptool** on the host:
-     ```bash
-     pip install esptool
-     ls /dev/cu.*          # find your serial port, e.g. /dev/cu.usbserial-*
-     esptool.py --port /dev/cu.usbserial-XXXX write_flash 0x0 \
-       container-config/.esphome/build/dfltech-switch/.pioenvs/dfltech-switch/firmware.bin
-     ```
-3. **All later updates** over Wi-Fi via the dashboard (Install → Wirelessly) or:
-   ```bash
-   docker compose run --rm esphome run dfltech-switch.yaml
-   ```
-
-### Linux
-
-USB passthrough works with Docker. Adjust the serial device in `docker-compose.yml` if needed (default: `/dev/ttyUSB0`), then:
-
-```bash
-docker compose run --rm esphome run dfltech-switch.yaml
-```
+- [ESPHome Web](https://web.esphome.io) — upload `firmware.bin` over USB
+- **esptool** on the host:
+  ```bash
+  pip install esptool
+  esptool.py --port /dev/cu.usbserial-XXXX write_flash 0x0 firmware.bin
+  ```
 
 ## Home Assistant integration
 
-The device connects via the native ESPHome API. Button actions are sent as events:
+Button actions are sent as events:
 
 | Event type | `esphome.dfltech_switch` |
 |------------|--------------------------|
@@ -132,28 +120,10 @@ automation:
           entity_id: light.living_room
 ```
 
-You can listen for events in **Developer Tools → Events** while testing.
-
-## Common commands
-
-| Task | Command |
-|------|---------|
-| Start dashboard | `docker compose up -d` |
-| Stop dashboard | `docker compose down` |
-| View logs | `docker compose logs -f esphome` |
-| Validate config | `docker compose run --rm esphome config dfltech-switch.yaml` |
-| Compile | `docker compose run --rm esphome compile dfltech-switch.yaml` |
-| Flash / OTA | `docker compose run --rm esphome run dfltech-switch.yaml` |
-| Clean build | `rm -rf container-config/.esphome/build/dfltech-switch` |
-
 ## Troubleshooting
 
-**Config changes not picked up** — Make sure `container-config/dfltech-switch.yaml` matches the file you edited. Recompile after changes.
+**Device won't join Wi-Fi** — Use factory reset (FLASH 10s), then re-provision via captive portal.
 
-**Device won't join Wi-Fi** — Check `secrets.yaml`. If your router uses legacy WPA (not WPA2), add `min_auth_mode: WPA` under the `wifi:` block in `dfltech-switch.yaml`.
+**No serial logs over USB** — Expected. `baud_rate: 0` frees GPIO3 (RX) for key 6. Use Home Assistant for status.
 
-**No serial logs over USB** — Expected. `baud_rate: 0` frees GPIO3 (RX) for key 6. Use the ESPHome dashboard or Home Assistant for status instead.
-
-**Stale build targeting wrong board** — Delete `container-config/.esphome/build/dfltech-switch` and recompile.
-
-**Captive portal** — If Wi-Fi credentials are wrong, the device starts a fallback AP (`Dfltech-Switch Fallback`) so you can reconfigure via the dashboard.
+**OTA check fails** — Ensure GitHub Pages is deployed after a release. ESP8266 TLS may need buffer tuning in `dfltech-switch.factory.yaml` (`tls_buffer_size_rx`).

@@ -1,0 +1,21 @@
+packages:
+  core: !include dfltech-switch.yaml
+
+esphome:
+  project:
+    name: dflourusso.dfltech-switch
+    version: dev
+
+http_request:
+  verify_ssl: false
+  tls_buffer_size_rx: 4096
+
+ota:
+  - platform: http_request
+    id: ota_http_request
+
+update:
+  - platform: http_request
+    name: Firmware
+    device_class: firmware
+    source: https://dflourusso.github.io/ha-esphome-switch/firmware/manifest.json
