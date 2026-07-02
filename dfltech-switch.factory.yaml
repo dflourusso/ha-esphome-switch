@@ -4,11 +4,11 @@ packages:
 esphome:
   project:
     name: dflourusso.dfltech-switch
-    version: 1.0.5
+    version: 1.0.6
 
 http_request:
   verify_ssl: false
-  tls_buffer_size_rx: 1024
+  tls_buffer_size_rx: 2048
 
 ota:
   - platform: http_request
