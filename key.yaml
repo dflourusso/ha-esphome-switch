@@ -1,0 +1,45 @@
+# Shared GND key: single / double / hold → Home Assistant event.
+# Include via packages with vars: key (string "1"…"6"), pin (e.g. GPIO0)
+
+binary_sensor:
+  - platform: gpio
+    id: key_${key}
+    internal: true
+    pin:
+      number: ${pin}
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_multi_click:
+      - timing:
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "${key}"
+                action: single
+      - timing:
+          - ON for at most 250ms
+          - OFF for at most 250ms
+          - ON for at most 250ms
+          - OFF for at least 250ms
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "${key}"
+                action: double
+      - timing:
+          - ON for at least 1.2s
+        then:
+          - homeassistant.event:
+              event: esphome.dfltech_switch
+              data:
+                key: "${key}"
+                action: hold
