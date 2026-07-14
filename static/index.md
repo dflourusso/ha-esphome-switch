@@ -8,6 +8,8 @@ Connect the Super Mini via USB-C, then use the button below to flash the factory
 
 If the flasher cannot connect, hold **BOOT**, tap **RST**, then release **BOOT**, and try again.
 
+After install, keep USB connected and use **Configure Wi-Fi** in the installer dialog (Improv over serial) — that is the most reliable way to set credentials.
+
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
 <esp-web-install-button manifest="firmware/manifest.json">
@@ -18,10 +20,15 @@ If the flasher cannot connect, hold **BOOT**, tap **RST**, then release **BOOT**
 
 ## After flashing
 
+**Preferred:** use **Configure Wi-Fi** in the browser installer while USB is still connected.
+
+**Fallback (SoftAP):**
+
 1. The device starts a Wi-Fi access point named `dfltech-switch-XXXXXX` (password: `dfltech-setup`).
 2. Connect with your phone — the captive portal opens automatically (or go to http://192.168.4.1/).
 3. Enter your home Wi-Fi credentials.
-4. Add the device in Home Assistant via the ESPHome integration (`dfltech-switch-XXXXXX.local`).
+
+Then add the device in Home Assistant via the ESPHome integration (`dfltech-switch-XXXXXX.local`).
 
 Firmware updates are offered automatically in Home Assistant when a new release is published.
 

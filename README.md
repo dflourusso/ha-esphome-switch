@@ -39,10 +39,9 @@ Board: **ESP32-C3 Super Mini** (`esp32-c3-devkitm-1`). Each input is active-low 
 
 1. Download the latest `*.factory.bin` from [GitHub Releases](https://github.com/dflourusso/ha-esphome-switch/releases), **or** use the browser installer at [dflourusso.github.io/ha-esphome-switch](https://dflourusso.github.io/ha-esphome-switch/) (Chrome/Edge, USB-C connected).
 2. If the browser flasher cannot connect, hold **BOOT**, tap **RST**, then release **BOOT**, and try again.
-3. After flashing, the device creates a Wi-Fi access point named `dfltech-switch-XXXXXX` (password: `dfltech-setup`).
-4. Connect with your phone — the captive portal opens (or open http://192.168.4.1/).
-5. Enter your home Wi-Fi credentials.
-6. In Home Assistant, add the device via **Settings → Devices & services → ESPHome** (`dfltech-switch-XXXXXX.local`).
+3. After flashing, prefer **Configure Wi-Fi** in the installer dialog (USB still connected). SoftAP fallback: join `dfltech-switch-XXXXXX` (password `dfltech-setup`) and open http://192.168.4.1/.
+4. Enter your home Wi-Fi credentials.
+5. In Home Assistant, add the device via **Settings → Devices & services → ESPHome** (`dfltech-switch-XXXXXX.local`).
 
 ### OTA updates
 
@@ -106,7 +105,8 @@ Docker cannot pass USB serial reliably on macOS. Compile in Docker, then flash v
 
 - [ESPHome Web](https://web.esphome.io) — upload `firmware.bin` over USB-C
 - Browser installer on the GitHub Pages site (Chrome/Edge)
-- If needed: hold **BOOT**, tap **RST**, release **BOOT**, then flash
+- Prefer **Configure Wi-Fi** in the installer after flash (Improv over USB)
+- SoftAP fallback: hold **BOOT**, tap **RST**, release **BOOT**, then flash if needed; join `dfltech-switch-XXXXXX` / `dfltech-setup`
 
 ## Home Assistant integration
 
@@ -138,7 +138,9 @@ automation:
 
 ## Troubleshooting
 
-**Device won't join Wi-Fi** — Use factory reset (BOOT 10s), then re-provision via captive portal.
+**Device won't join Wi-Fi** — Prefer USB **Configure Wi-Fi** after flash. SoftAP fallback: factory reset (BOOT 10s), then re-provision. ESP32-C3 Super Mini needs `output_power: 8.5dB` (already set in this firmware).
+
+**Board runs hot in SoftAP** — Expected to be warm; TX power is limited to 8.5dB. After joining home Wi-Fi it should run cooler. Stop if too hot to touch.
 
 **Flasher cannot open the port** — Use a data-capable USB-C cable. Hold BOOT, tap RST, release BOOT, then retry.
 
