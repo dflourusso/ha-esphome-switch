@@ -15,15 +15,15 @@ logger:
 
 api:
 
-# Super Mini RF is unreliable / runs hot at default TX power; 8.5dB is the
-# usual fix for Auth Expired and SoftAP join failures on these boards.
+# Super Mini RF is unreliable at default TX power; 8.5dB is the usual fix.
+# LIGHT power save keeps STA cooler than NONE (NONE was only needed for SoftAP joins).
+# Fallback AP starts after 90s without STA — prefer USB Improv for first setup.
 wifi:
   output_power: 8.5dB
-  power_save_mode: none
+  power_save_mode: LIGHT
   reboot_timeout: 0s
   ap:
     password: "dfltech-setup"
-    ap_timeout: 0s
 
 # Provision Wi-Fi over the same USB session after browser flash (preferred over SoftAP).
 improv_serial:

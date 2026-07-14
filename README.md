@@ -140,7 +140,7 @@ automation:
 
 **Device won't join Wi-Fi** — Prefer USB **Configure Wi-Fi** after flash. SoftAP fallback: factory reset (BOOT 10s), then re-provision. ESP32-C3 Super Mini needs `output_power: 8.5dB` (already set in this firmware).
 
-**Board runs hot in SoftAP** — Expected to be warm; TX power is limited to 8.5dB. After joining home Wi-Fi it should run cooler. Stop if too hot to touch.
+**Board runs warm** — Super Mini boards run warm under Wi-Fi. SoftAP is hotter than STA. After joining home Wi-Fi (with LIGHT power save), it should settle cooler. Stop if too hot to touch.
 
 **Flasher cannot open the port** — Use a data-capable USB-C cable. Hold BOOT, tap RST, release BOOT, then retry.
 
