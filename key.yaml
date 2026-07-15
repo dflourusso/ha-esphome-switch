@@ -1,5 +1,15 @@
-# Shared GND key: single / double / hold → Home Assistant event.
+# Shared GND key: single / double / hold → HA event entity + bus event.
 # Include via packages with vars: key (string "1"…"6"), pin (e.g. GPIO0)
+
+event:
+  - platform: template
+    id: key_${key}_event
+    name: "Key ${key}"
+    device_class: button
+    event_types:
+      - single
+      - double
+      - hold
 
 binary_sensor:
   - platform: gpio
@@ -19,6 +29,9 @@ binary_sensor:
           - ON for at most 250ms
           - OFF for at least 250ms
         then:
+          - event.trigger:
+              id: key_${key}_event
+              event_type: single
           - homeassistant.event:
               event: esphome.dfltech_switch
               data:
@@ -30,6 +43,9 @@ binary_sensor:
           - ON for at most 250ms
           - OFF for at least 250ms
         then:
+          - event.trigger:
+              id: key_${key}_event
+              event_type: double
           - homeassistant.event:
               event: esphome.dfltech_switch
               data:
@@ -38,6 +54,9 @@ binary_sensor:
       - timing:
           - ON for at least 1.2s
         then:
+          - event.trigger:
+              id: key_${key}_event
+              event_type: hold
           - homeassistant.event:
               event: esphome.dfltech_switch
               data:

@@ -110,30 +110,57 @@ Docker cannot pass USB serial reliably on macOS. Compile in Docker, then flash v
 
 ## Home Assistant integration
 
-Button actions are sent as events:
+Each key appears as an **event entity** on the device (`Key 1` … `Key 6`), with event types `single`, `double`, and `hold`. Use these for automations — especially when you have multiple switches, since Home Assistant scopes them to the correct device automatically.
+
+Hold requires the button to be pressed for at least **1.2 seconds**.
+
+### Recommended: device trigger (event entities)
+
+In **Settings → Automations → Create automation → Device**, pick your switch, then choose e.g. **Key 1 → Single**.
+
+Example YAML (device trigger):
+
+```yaml
+automation:
+  - alias: "Kitchen switch key 1 single"
+    trigger:
+      - platform: device
+        domain: event
+        device_id: YOUR_DEVICE_ID
+        entity_id: event.dfltech_switch_xxxx_key_1
+        type: single
+    action:
+      - service: light.toggle
+        target:
+          entity_id: light.kitchen
+```
+
+The entity id includes the MAC suffix (e.g. `event.dfltech_switch_9cc001d18b48_key_1`). Creating the automation from the device page fills in `device_id` and `entity_id` for you.
+
+### Legacy: event bus (all devices share one event type)
+
+Button actions are also sent as a global event (backward compatible, but not scoped to a device):
 
 | Event type | `esphome.dfltech_switch` |
 |------------|--------------------------|
 | `key` | `"1"` … `"6"` |
 | `action` | `single`, `double`, `hold` |
 
-Hold requires the button to be pressed for at least **1.2 seconds**.
-
-Example automation:
+Use this only for automations that should fire from **any** switch. For per-room rules with multiple devices, prefer the event entities above.
 
 ```yaml
 automation:
-  - alias: "Wall switch key 1 single"
+  - alias: "Any switch key 6 hold"
     trigger:
       - platform: event
         event_type: esphome.dfltech_switch
         event_data:
-          key: "1"
-          action: single
+          key: "6"
+          action: hold
     action:
-      - service: light.toggle
+      - service: light.turn_off
         target:
-          entity_id: light.living_room
+          area_id: living_room
 ```
 
 ## Troubleshooting
