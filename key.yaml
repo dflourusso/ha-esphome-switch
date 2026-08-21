@@ -1,5 +1,28 @@
-# Shared GND key: single / double / hold → HA event entity + bus event.
-# Include via packages with vars: key (string "1"…"6"), pin (e.g. GPIO0)
+# Shared GND key: Click (single/double/hold) or Dim (single + dim_up/dim_down/release).
+# Mode is a HA config select persisted in flash. Include via packages with vars:
+#   key (string "1"…"6"), pin (e.g. GPIO0)
+
+globals:
+  - id: key_${key}_dim_up_next
+    type: bool
+    restore_value: no
+    initial_value: "true"
+  - id: key_${key}_dimming
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+select:
+  - platform: template
+    id: key_${key}_mode
+    name: "Key ${key} Mode"
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    options:
+      - Click
+      - Dim
+    initial_option: Click
 
 event:
   - platform: template
@@ -10,6 +33,40 @@ event:
       - single
       - double
       - hold
+      - dim_up
+      - dim_down
+      - release
+
+script:
+  # Dim hold: after 400ms emit dim_up/dim_down. Stopped on release if still waiting.
+  - id: key_${key}_dim_hold
+    mode: restart
+    then:
+      - delay: 400ms
+      - lambda: 'id(key_${key}_dimming) = true;'
+      - if:
+          condition:
+            lambda: 'return id(key_${key}_dim_up_next);'
+          then:
+            - event.trigger:
+                id: key_${key}_event
+                event_type: dim_up
+            - homeassistant.event:
+                event: esphome.dfltech_switch
+                data:
+                  key: "${key}"
+                  action: dim_up
+            - lambda: 'id(key_${key}_dim_up_next) = false;'
+          else:
+            - event.trigger:
+                id: key_${key}_event
+                event_type: dim_down
+            - homeassistant.event:
+                event: esphome.dfltech_switch
+                data:
+                  key: "${key}"
+                  action: dim_down
+            - lambda: 'id(key_${key}_dim_up_next) = true;'
 
 binary_sensor:
   - platform: gpio
@@ -24,41 +81,97 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
       - delayed_off: 10ms
+    on_press:
+      - if:
+          condition:
+            select.is:
+              id: key_${key}_mode
+              options: Dim
+          then:
+            - script.execute: key_${key}_dim_hold
+    on_release:
+      - if:
+          condition:
+            select.is:
+              id: key_${key}_mode
+              options: Dim
+          then:
+            - script.stop: key_${key}_dim_hold
+            - if:
+                condition:
+                  lambda: 'return id(key_${key}_dimming);'
+                then:
+                  - lambda: 'id(key_${key}_dimming) = false;'
+                  - event.trigger:
+                      id: key_${key}_event
+                      event_type: release
+                  - homeassistant.event:
+                      event: esphome.dfltech_switch
+                      data:
+                        key: "${key}"
+                        action: release
+                else:
+                  - event.trigger:
+                      id: key_${key}_event
+                      event_type: single
+                  - homeassistant.event:
+                      event: esphome.dfltech_switch
+                      data:
+                        key: "${key}"
+                        action: single
     on_multi_click:
       - timing:
-          - ON for at most 250ms
-          - OFF for at least 250ms
+          - ON for at most 300ms
+          - OFF for at least 300ms
         then:
-          - event.trigger:
-              id: key_${key}_event
-              event_type: single
-          - homeassistant.event:
-              event: esphome.dfltech_switch
-              data:
-                key: "${key}"
-                action: single
+          - if:
+              condition:
+                select.is:
+                  id: key_${key}_mode
+                  options: Click
+              then:
+                - event.trigger:
+                    id: key_${key}_event
+                    event_type: single
+                - homeassistant.event:
+                    event: esphome.dfltech_switch
+                    data:
+                      key: "${key}"
+                      action: single
       - timing:
-          - ON for at most 250ms
-          - OFF for at most 250ms
-          - ON for at most 250ms
-          - OFF for at least 250ms
+          - ON for at most 300ms
+          - OFF for at most 300ms
+          - ON for at most 300ms
+          - OFF for at least 300ms
         then:
-          - event.trigger:
-              id: key_${key}_event
-              event_type: double
-          - homeassistant.event:
-              event: esphome.dfltech_switch
-              data:
-                key: "${key}"
-                action: double
+          - if:
+              condition:
+                select.is:
+                  id: key_${key}_mode
+                  options: Click
+              then:
+                - event.trigger:
+                    id: key_${key}_event
+                    event_type: double
+                - homeassistant.event:
+                    event: esphome.dfltech_switch
+                    data:
+                      key: "${key}"
+                      action: double
       - timing:
           - ON for at least 1.2s
         then:
-          - event.trigger:
-              id: key_${key}_event
-              event_type: hold
-          - homeassistant.event:
-              event: esphome.dfltech_switch
-              data:
-                key: "${key}"
-                action: hold
+          - if:
+              condition:
+                select.is:
+                  id: key_${key}_mode
+                  options: Click
+              then:
+                - event.trigger:
+                    id: key_${key}_event
+                    event_type: hold
+                - homeassistant.event:
+                    event: esphome.dfltech_switch
+                    data:
+                      key: "${key}"
+                      action: hold

@@ -1,6 +1,6 @@
 # DFLTech ESPHome Wall Switch
 
-ESPHome firmware for an **ESP32-C3 Super Mini** that reads 6 GND inputs from a custom wall switch and sends click events to Home Assistant (single, double, and hold).
+ESPHome firmware for an **ESP32-C3 Super Mini** that reads 6 GND inputs from a custom wall switch and sends click events to Home Assistant. Each key can be set to **Click** (single / double / hold) or **Dim** (single + dim up/down while held) from the device page.
 
 Distributed as a **product firmware**: flash once, provision Wi-Fi via captive portal, receive OTA updates through Home Assistant.
 
@@ -62,7 +62,7 @@ Each device gets a unique hostname (`dfltech-switch-aabbcc`) from its MAC addres
 ```
 ha-esphome-switch/
 ├── dfltech-switch.yaml          # Core device logic (keys, captive portal, factory reset)
-├── key.yaml                     # Shared single/double/hold key package
+├── key.yaml                     # Shared key package (Click / Dim modes)
 ├── dfltech-switch.factory.yaml  # Distribution build (HTTP OTA + update entity)
 ├── dfltech-switch.dev.yaml      # Local dev overlay (Wi-Fi from secrets)
 ├── secrets.template.yaml        # Template for local secrets.yaml
@@ -110,15 +110,51 @@ Docker cannot pass USB serial reliably on macOS. Compile in Docker, then flash v
 
 ## Home Assistant integration
 
-Each key appears as an **event entity** on the device (`Key 1` … `Key 6`), with event types `single`, `double`, and `hold`. Use these for automations — especially when you have multiple switches, since Home Assistant scopes them to the correct device automatically.
+Each key appears as an **event entity** on the device (`Key 1` … `Key 6`). Use these for automations — especially when you have multiple switches, since Home Assistant scopes them to the correct device automatically.
 
-Hold requires the button to be pressed for at least **1.2 seconds**.
+### Key mode (device page)
 
-### Recommended: device trigger (event entities)
+Each key also has a **Key N Mode** select under the device **Configuration** section. The choice is stored on the device flash and survives reboots.
 
-In **Settings → Automations → Create automation → Device**, pick your switch, then choose e.g. **Key 1 → Single**.
+| Mode | Behavior |
+|------|----------|
+| **Click** (default) | `single`, `double`, `hold` |
+| **Dim** | Short press → `single`. Press-and-hold (~400ms) → `dim_up` or `dim_down` (alternates each hold), then `release` when you let go. No double-click. |
 
-Example YAML (device trigger):
+**Click timing:** short presses must be ≤ **300ms**; after release, wait **300ms** before `single` (so double-click can be detected). **Hold** requires at least **1.2 seconds**.
+
+**Dim timing:** hold past **~400ms** starts dimming; release before that is a `single`.
+
+### Recommended: Event received or Device trigger
+
+Do **not** use a State trigger with Attribute → Event type → To `single`. That only fires when the type *changes* (e.g. `double` → `single`). A second single press leaves the attribute at `single`, so the automation will not run again. Event entities never clear back to null; the state value is a timestamp that updates on every press.
+
+**UI options that work for repeated presses:**
+
+1. **Event received** → pick `Key 1` → Event type `single`
+2. **Device** → your switch → **Key 1** → Single
+3. **State** on `Key 1` with **no** Attribute / To filter, then an **And if** condition: Attribute `Event type` is `single`
+
+**YAML — state + condition** (fires every single press):
+
+```yaml
+automation:
+  - alias: "Kitchen switch key 1 single"
+    trigger:
+      - platform: state
+        entity_id: event.dfltech_switch_xxxx_key_1
+    condition:
+      - condition: state
+        entity_id: event.dfltech_switch_xxxx_key_1
+        attribute: event_type
+        state: single
+    action:
+      - service: light.toggle
+        target:
+          entity_id: light.kitchen
+```
+
+**YAML — device trigger:**
 
 ```yaml
 automation:
@@ -135,7 +171,102 @@ automation:
           entity_id: light.kitchen
 ```
 
-The entity id includes the MAC suffix (e.g. `event.dfltech_switch_9cc001d18b48_key_1`). Creating the automation from the device page fills in `device_id` and `entity_id` for you.
+The entity id includes the MAC suffix (e.g. `event.dfltech_switch_9cc001d18b48_key_1`). Creating the automation from the device page or **Event received** fills in the ids for you.
+
+### Dim mode example (brightness while held)
+
+Set **Key N Mode** to **Dim** on the device page. Use `single` to toggle, start a brightness loop on `dim_up` / `dim_down`, and stop it on `release`:
+
+```yaml
+script:
+  - alias: "Kitchen dim up"
+    mode: restart
+    sequence:
+      - repeat:
+          while:
+            - condition: template
+              value_template: "{{ true }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: light.kitchen
+              data:
+                brightness_step_pct: 5
+            - delay: "00:00:00.150"
+  - alias: "Kitchen dim down"
+    mode: restart
+    sequence:
+      - repeat:
+          while:
+            - condition: template
+              value_template: "{{ true }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: light.kitchen
+              data:
+                brightness_step_pct: -5
+            - delay: "00:00:00.150"
+
+automation:
+  - alias: "Kitchen switch key 2 single (toggle)"
+    trigger:
+      - platform: state
+        entity_id: event.dfltech_switch_xxxx_key_2
+    condition:
+      - condition: state
+        entity_id: event.dfltech_switch_xxxx_key_2
+        attribute: event_type
+        state: single
+    action:
+      - service: light.toggle
+        target:
+          entity_id: light.kitchen
+
+  - alias: "Kitchen switch key 2 dim up"
+    trigger:
+      - platform: state
+        entity_id: event.dfltech_switch_xxxx_key_2
+    condition:
+      - condition: state
+        entity_id: event.dfltech_switch_xxxx_key_2
+        attribute: event_type
+        state: dim_up
+    action:
+      - service: script.turn_on
+        target:
+          entity_id: script.kitchen_dim_up
+
+  - alias: "Kitchen switch key 2 dim down"
+    trigger:
+      - platform: state
+        entity_id: event.dfltech_switch_xxxx_key_2
+    condition:
+      - condition: state
+        entity_id: event.dfltech_switch_xxxx_key_2
+        attribute: event_type
+        state: dim_down
+    action:
+      - service: script.turn_on
+        target:
+          entity_id: script.kitchen_dim_down
+
+  - alias: "Kitchen switch key 2 release (stop dim)"
+    trigger:
+      - platform: state
+        entity_id: event.dfltech_switch_xxxx_key_2
+    condition:
+      - condition: state
+        entity_id: event.dfltech_switch_xxxx_key_2
+        attribute: event_type
+        state: release
+    action:
+      - service: script.turn_off
+        target:
+          entity_id:
+            - script.kitchen_dim_up
+            - script.kitchen_dim_down
+```
 
 ### Legacy: event bus (all devices share one event type)
 
@@ -144,7 +275,7 @@ Button actions are also sent as a global event (backward compatible, but not sco
 | Event type | `esphome.dfltech_switch` |
 |------------|--------------------------|
 | `key` | `"1"` … `"6"` |
-| `action` | `single`, `double`, `hold` |
+| `action` | `single`, `double`, `hold`, `dim_up`, `dim_down`, `release` |
 
 Use this only for automations that should fire from **any** switch. For per-room rules with multiple devices, prefer the event entities above.
 
