@@ -4,7 +4,7 @@ packages:
 esphome:
   project:
     name: dflourusso.dfltech-switch
-    version: "2.2.0"
+    version: dev # Replaced by the release workflow with the workflow_dispatch version
 
 http_request:
 

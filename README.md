@@ -93,9 +93,11 @@ Or with ESPHome installed locally: `esphome compile dfltech-switch.factory.yaml`
 
 ### Publish a release
 
+Do **not** bump `esphome.project.version` in YAML. Factory builds keep `version: dev`; the release workflow replaces that with the version you type in.
+
 1. Go to **Actions → Release Firmware → Run workflow**.
-2. Enter a version (e.g. `2.0.0`) and optional release notes.
-3. The workflow builds firmware, creates a GitHub Release with `.factory.bin` / `.ota.bin`, and deploys GitHub Pages with the OTA manifest.
+2. Enter a version (e.g. `2.3.0`) and optional release notes.
+3. The workflow writes that version into the factory YAML, builds firmware, creates a GitHub Release with `.factory.bin` / `.ota.bin`, and deploys GitHub Pages with the OTA manifest (root `version` matches the release).
 
 OTA manifest URL (devices poll this): `https://dflourusso.github.io/ha-esphome-switch/firmware/manifest.json`
 
