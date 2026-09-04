@@ -2,9 +2,9 @@
 
 ESPHome firmware for an **ESP32-S3 Super Mini** that reads 6 GND inputs from a custom wall switch and sends click events to Home Assistant. Each key can be set to **Click** (single / double / hold) or **Dim** (single + dim up/down while held) from the device page.
 
-The same module also runs as a **BLE Proxy** (`bluetooth_proxy`): it forwards BLE advertisements and GATT to Home Assistant so one board per room covers both the wall switch and room BLE (Private BLE Device, Bermuda, BTHome, and similar).
-
 Distributed as a **product firmware**: flash once, provision Wi-Fi via captive portal, receive OTA updates through Home Assistant.
+
+For room BLE scanning / Private BLE / Bermuda, use a separate board with [ha-esphome-ble-scanner](https://github.com/dflourusso/ha-esphome-ble-scanner) (not this in-wall switch).
 
 ## Hardware
 
@@ -36,12 +36,6 @@ Board: **ESP32-S3 Super Mini** (`esp32-s3-devkitc-1`, 4MB flash). Each input is 
 - Do **not** power from USB-C and the 5V pin at the same time.
 - Do **not** apply 5V to any GPIO (3.3V logic only). Switches go to GND.
 
-### BLE Proxy
-
-Scanning starts after Home Assistant connects and stops when HA disconnects (`esp32_ble_tracker` + `bluetooth_proxy` with `active: true`, `connection_slots: 3`).
-
-For iPhone Private BLE / IRK capture, use a spare board with the IRK Capture firmware in [ha-esphome-ble-scanner](https://github.com/dflourusso/ha-esphome-ble-scanner) — do not combine IRK Capture with this image (BLE stack conflict).
-
 ## End users
 
 ### Install firmware (first time)
@@ -70,7 +64,7 @@ Each device gets a unique hostname (`dfltech-switch-aabbcc`) from its MAC addres
 
 ```
 ha-esphome-switch/
-├── dfltech-switch.yaml          # Core device logic (keys, BLE proxy, captive portal, factory reset)
+├── dfltech-switch.yaml          # Core device logic (keys, captive portal, factory reset)
 ├── key.yaml                     # Shared key package (Click / Dim modes)
 ├── dfltech-switch.factory.yaml  # Distribution build (HTTP OTA + update entity)
 ├── dfltech-switch.dev.yaml      # Local dev overlay (Wi-Fi from secrets)
@@ -224,10 +218,8 @@ automation:
 
 **Device won't join Wi-Fi** — Prefer USB **Configure Wi-Fi** after flash. SoftAP fallback: factory reset (BOOT 10s), then re-provision.
 
-**Board runs warm** — Super Mini boards run warm under Wi-Fi + BLE. SoftAP is hotter than STA. After joining home Wi-Fi (with LIGHT power save), it should settle cooler. Stop if too hot to touch.
+**Board runs warm** — Super Mini boards run warm under Wi-Fi. SoftAP is hotter than STA. After joining home Wi-Fi (with LIGHT power save), it should settle cooler. Stop if too hot to touch. In-wall / enclosed installs run hotter — prefer airflow and the switch-only firmware (no BLE on this board).
 
 **Flasher cannot open the port** — Use a data-capable USB-C cable. Hold BOOT, tap RST, release BOOT, then retry.
-
-**Private BLE says no adapter** — Confirm this device is online in ESPHome (it exposes `bluetooth_proxy`). BLE scan starts only after HA is connected.
 
 **OTA check fails** — Ensure GitHub Pages is deployed after a release and the device can reach the internet.

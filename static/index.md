@@ -1,6 +1,6 @@
 # DFLTech Switch
 
-ESPHome firmware for an ESP32-S3 Super Mini wall switch with 6 inputs (single, double, and hold events sent to Home Assistant). The same firmware also acts as a BLE Proxy for Home Assistant (`bluetooth_proxy`).
+ESPHome firmware for an ESP32-S3 Super Mini wall switch with 6 inputs (single, double, and hold events sent to Home Assistant).
 
 ## First-time installation
 

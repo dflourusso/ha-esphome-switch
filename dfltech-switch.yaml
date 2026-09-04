@@ -9,40 +9,12 @@ esp32:
   flash_size: 4MB
   framework:
     type: esp-idf
-    sdkconfig_options:
-      # Same as ble-proxy: BLE 4.2 features for bluetooth_proxy
-      CONFIG_BT_BLE_42_FEATURES_SUPPORTED: y
 
 # Super Mini uses native USB for serial (USB-C).
 logger:
   hardware_uart: USB_SERIAL_JTAG
 
-# Do not auto-start scanning at boot — wait until Home Assistant is connected.
-esp32_ble_tracker:
-  scan_parameters:
-    continuous: false
-    active: true
-
-# Forward BLE advertisements (and optional GATT) to Home Assistant.
-# Enables Private BLE Device, Bermuda, BTHome, and other HA BLE integrations.
-bluetooth_proxy:
-  active: true
-  connection_slots: 3
-
 api:
-  on_client_connected:
-    - esp32_ble_tracker.start_scan:
-        continuous: true
-  on_client_disconnected:
-    # Fires for every departing client (log viewer, CLI). Only stop when
-    # Home Assistant itself is gone (ignore logger-only clients).
-    - if:
-        condition:
-          not:
-            api.connected:
-              state_subscription_only: true
-        then:
-          - esp32_ble_tracker.stop_scan:
 
 # Lower TX power reduces heat on Super Mini boards (also helps RF stability).
 # LIGHT power save keeps STA cooler than NONE (NONE was only needed for SoftAP joins).
@@ -97,9 +69,6 @@ switch:
     internal: true
 
 binary_sensor:
-  - platform: status
-    name: Status
-
   # BOOT button on Super Mini (GPIO0)
   - platform: gpio
     id: boot_button
