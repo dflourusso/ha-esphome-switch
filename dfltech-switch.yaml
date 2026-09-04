@@ -5,21 +5,48 @@ esphome:
   min_version: 2026.6.0
 
 esp32:
-  board: esp32-c3-devkitm-1
+  board: esp32-s3-devkitc-1
+  flash_size: 4MB
   framework:
     type: esp-idf
+    sdkconfig_options:
+      # Same as ble-proxy: BLE 4.2 features for bluetooth_proxy
+      CONFIG_BT_BLE_42_FEATURES_SUPPORTED: y
 
 # Super Mini uses native USB for serial (USB-C).
 logger:
   hardware_uart: USB_SERIAL_JTAG
 
-api:
+# Do not auto-start scanning at boot — wait until Home Assistant is connected.
+esp32_ble_tracker:
+  scan_parameters:
+    continuous: false
+    active: true
 
-# Super Mini RF is unreliable at default TX power; 8.5dB is the usual fix.
+# Forward BLE advertisements (and optional GATT) to Home Assistant.
+# Enables Private BLE Device, Bermuda, BTHome, and other HA BLE integrations.
+bluetooth_proxy:
+  active: true
+  connection_slots: 3
+
+api:
+  on_client_connected:
+    - esp32_ble_tracker.start_scan:
+        continuous: true
+  on_client_disconnected:
+    # Fires for every departing client (log viewer, CLI). Only stop when
+    # Home Assistant itself is gone (ignore logger-only clients).
+    - if:
+        condition:
+          not:
+            api.connected:
+              state_subscription_only: true
+        then:
+          - esp32_ble_tracker.stop_scan:
+
 # LIGHT power save keeps STA cooler than NONE (NONE was only needed for SoftAP joins).
 # Fallback AP starts after 90s without STA — prefer USB Improv for first setup.
 wifi:
-  output_power: 8.5dB
   power_save_mode: LIGHT
   reboot_timeout: 0s
   ap:
@@ -35,32 +62,32 @@ packages:
     file: key.yaml
     vars:
       key: "1"
-      pin: GPIO0
+      pin: GPIO13
   key_2: !include
     file: key.yaml
     vars:
       key: "2"
-      pin: GPIO1
+      pin: GPIO12
   key_3: !include
     file: key.yaml
     vars:
       key: "3"
-      pin: GPIO3
+      pin: GPIO11
   key_4: !include
     file: key.yaml
     vars:
       key: "4"
-      pin: GPIO4
+      pin: GPIO10
   key_5: !include
     file: key.yaml
     vars:
       key: "5"
-      pin: GPIO5
+      pin: GPIO9
   key_6: !include
     file: key.yaml
     vars:
       key: "6"
-      pin: GPIO6
+      pin: GPIO8
 
 switch:
   - platform: factory_reset
@@ -68,12 +95,15 @@ switch:
     internal: true
 
 binary_sensor:
-  # BOOT button on Super Mini (GPIO9)
+  - platform: status
+    name: Status
+
+  # BOOT button on Super Mini (GPIO0)
   - platform: gpio
     id: boot_button
     internal: true
     pin:
-      number: GPIO9
+      number: GPIO0
       mode:
         input: true
         pullup: true

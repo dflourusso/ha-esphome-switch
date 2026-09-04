@@ -1,6 +1,6 @@
 # Shared GND key: Click (single/double/hold) or Dim (single + dim_up/dim_down/release).
 # Mode is a HA config select persisted in flash. Include via packages with vars:
-#   key (string "1"…"6"), pin (e.g. GPIO0)
+#   key (string "1"…"6"), pin (e.g. GPIO13)
 
 globals:
   - id: key_${key}_dim_up_next

@@ -1,37 +1,46 @@
 # DFLTech ESPHome Wall Switch
 
-ESPHome firmware for an **ESP32-C3 Super Mini** that reads 6 GND inputs from a custom wall switch and sends click events to Home Assistant. Each key can be set to **Click** (single / double / hold) or **Dim** (single + dim up/down while held) from the device page.
+ESPHome firmware for an **ESP32-S3 Super Mini** that reads 6 GND inputs from a custom wall switch and sends click events to Home Assistant. Each key can be set to **Click** (single / double / hold) or **Dim** (single + dim up/down while held) from the device page.
+
+The same module also runs as a **BLE Proxy** (`bluetooth_proxy`): it forwards BLE advertisements and GATT to Home Assistant so one board per room covers both the wall switch and room BLE (Private BLE Device, Bermuda, BTHome, and similar).
 
 Distributed as a **product firmware**: flash once, provision Wi-Fi via captive portal, receive OTA updates through Home Assistant.
 
 ## Hardware
 
-Board: **ESP32-C3 Super Mini** (`esp32-c3-devkitm-1`). Each input is active-low (switch connects to GND). Internal pull-ups are enabled in firmware.
+Board: **ESP32-S3 Super Mini** (`esp32-s3-devkitc-1`, 4MB flash). Each input is active-low (switch connects to GND). Internal pull-ups are enabled in firmware. Keys use only the **side edge pins with holes** (power-side bank).
 
 <p align="center">
-  <img src="docs/images/esp32-c3-supermini-front.jpg" alt="ESP32-C3 Super Mini — front (pin labels)" width="360" />
+  <img src="docs/images/esp32-s3-supermini-front.jpg" alt="ESP32-S3 Super Mini — pin labels" width="360" />
   &nbsp;
-  <img src="docs/images/esp32-c3-supermini-back.jpg" alt="ESP32-C3 Super Mini — back (BOOT / RST)" width="360" />
+  <img src="docs/images/esp32-s3-supermini-back.jpg" alt="ESP32-S3 Super Mini — board overview" width="360" />
 </p>
 
 | Key / function | GPIO | Notes |
 |----------------|------|-------|
-| 1 | GPIO0 | |
-| 2 | GPIO1 | |
-| 3 | GPIO3 | |
-| 4 | GPIO4 | |
-| 5 | GPIO5 | |
-| 6 | GPIO6 | |
-| Factory reset | GPIO9 | BOOT button on the Super Mini |
-| (unused) | GPIO8 | Onboard LED / strapping — do not use for keys |
-| (avoid) | GPIO2 | Strapping pin — do not hold LOW at boot |
+| 1 | GPIO13 | Power-side edge (USB → bottom) |
+| 2 | GPIO12 | |
+| 3 | GPIO11 | |
+| 4 | GPIO10 | |
+| 5 | GPIO9 | |
+| 6 | GPIO8 | |
+| Factory reset | GPIO0 | BOOT button on the Super Mini |
+| (avoid) | GPIO3 | Strapping pin — do not hold LOW at boot |
+| (unused for keys) | TX / RX | UART0 (GPIO43 / GPIO44) |
+| (unused) | Inner pads | Use side holes only |
 
 ### Power
 
 - **USB-C**: programming and power while developing.
-- **5V pin**: for standalone/wall install — connect regulated **5V** to `5V` and ground to `G`. The onboard regulator provides 3.3V to the chip.
+- **5V pin**: for standalone/wall install — connect regulated **5V** to `5V` and ground to `GND`. The onboard regulator provides 3.3V to the chip.
 - Do **not** power from USB-C and the 5V pin at the same time.
 - Do **not** apply 5V to any GPIO (3.3V logic only). Switches go to GND.
+
+### BLE Proxy
+
+Scanning starts after Home Assistant connects and stops when HA disconnects (`esp32_ble_tracker` + `bluetooth_proxy` with `active: true`, `connection_slots: 3`).
+
+For iPhone Private BLE / IRK capture, use a spare board with the IRK Capture firmware in [ha-esphome-ble-scanner](https://github.com/dflourusso/ha-esphome-ble-scanner) — do not combine IRK Capture with this image (BLE stack conflict).
 
 ## End users
 
@@ -49,7 +58,7 @@ When a new version is published, Home Assistant shows a **Firmware** update on t
 
 ### Factory reset
 
-Hold the **BOOT** button (GPIO9) on the Super Mini for **10 seconds**, then release. Wi-Fi credentials are cleared and the setup access point starts again.
+Hold the **BOOT** button (GPIO0) on the Super Mini for **10 seconds**, then release. Wi-Fi credentials are cleared and the setup access point starts again.
 
 ### Device naming
 
@@ -61,12 +70,12 @@ Each device gets a unique hostname (`dfltech-switch-aabbcc`) from its MAC addres
 
 ```
 ha-esphome-switch/
-├── dfltech-switch.yaml          # Core device logic (keys, captive portal, factory reset)
+├── dfltech-switch.yaml          # Core device logic (keys, BLE proxy, captive portal, factory reset)
 ├── key.yaml                     # Shared key package (Click / Dim modes)
 ├── dfltech-switch.factory.yaml  # Distribution build (HTTP OTA + update entity)
 ├── dfltech-switch.dev.yaml      # Local dev overlay (Wi-Fi from secrets)
 ├── secrets.template.yaml        # Template for local secrets.yaml
-├── docs/images/                 # Board photos (ESP32-C3 Super Mini)
+├── docs/images/                 # Board photos (ESP32-S3 Super Mini)
 ├── static/                      # GitHub Pages installer site
 └── .github/workflows/           # CI, release, and Pages deploy
 ```
@@ -175,100 +184,15 @@ automation:
 
 The entity id includes the MAC suffix (e.g. `event.dfltech_switch_9cc001d18b48_key_1`). Creating the automation from the device page or **Event received** fills in the ids for you.
 
-### Dim mode example (brightness while held)
+### Dim mode blueprint (toggle + hold-to-dim)
 
-Set **Key N Mode** to **Dim** on the device page. Use `single` to toggle, start a brightness loop on `dim_up` / `dim_down`, and stop it on `release`:
+Set **Key N Mode** to **Dim** on the device page, then use the blueprint shipped with [home-automation](https://github.com/dflourusso/home-automation) (bind-mounted into HA):
 
-```yaml
-script:
-  - alias: "Kitchen dim up"
-    mode: restart
-    sequence:
-      - repeat:
-          while:
-            - condition: template
-              value_template: "{{ true }}"
-          sequence:
-            - service: light.turn_on
-              target:
-                entity_id: light.kitchen
-              data:
-                brightness_step_pct: 5
-            - delay: "00:00:00.150"
-  - alias: "Kitchen dim down"
-    mode: restart
-    sequence:
-      - repeat:
-          while:
-            - condition: template
-              value_template: "{{ true }}"
-          sequence:
-            - service: light.turn_on
-              target:
-                entity_id: light.kitchen
-              data:
-                brightness_step_pct: -5
-            - delay: "00:00:00.150"
+[`homeassistant/blueprints/automation/dfltech-switch-dim-key.yaml`](https://github.com/dflourusso/home-automation/blob/main/homeassistant/blueprints/automation/dfltech-switch-dim-key.yaml)
 
-automation:
-  - alias: "Kitchen switch key 2 single (toggle)"
-    trigger:
-      - platform: state
-        entity_id: event.dfltech_switch_xxxx_key_2
-    condition:
-      - condition: state
-        entity_id: event.dfltech_switch_xxxx_key_2
-        attribute: event_type
-        state: single
-    action:
-      - service: light.toggle
-        target:
-          entity_id: light.kitchen
+After `git pull` on the home-automation host, recreate HA so the bind mount picks it up. In HA: **Settings → Automations & scenes → Blueprints** → **DFLTech Switch — Dim key** → create automation → pick **Key** + **Light**.
 
-  - alias: "Kitchen switch key 2 dim up"
-    trigger:
-      - platform: state
-        entity_id: event.dfltech_switch_xxxx_key_2
-    condition:
-      - condition: state
-        entity_id: event.dfltech_switch_xxxx_key_2
-        attribute: event_type
-        state: dim_up
-    action:
-      - service: script.turn_on
-        target:
-          entity_id: script.kitchen_dim_up
-
-  - alias: "Kitchen switch key 2 dim down"
-    trigger:
-      - platform: state
-        entity_id: event.dfltech_switch_xxxx_key_2
-    condition:
-      - condition: state
-        entity_id: event.dfltech_switch_xxxx_key_2
-        attribute: event_type
-        state: dim_down
-    action:
-      - service: script.turn_on
-        target:
-          entity_id: script.kitchen_dim_down
-
-  - alias: "Kitchen switch key 2 release (stop dim)"
-    trigger:
-      - platform: state
-        entity_id: event.dfltech_switch_xxxx_key_2
-    condition:
-      - condition: state
-        entity_id: event.dfltech_switch_xxxx_key_2
-        attribute: event_type
-        state: release
-    action:
-      - service: script.turn_off
-        target:
-          entity_id:
-            - script.kitchen_dim_up
-            - script.kitchen_dim_down
-```
+Behavior: short press toggles; hold dims up/down (direction alternates on the device); release stops.
 
 ### Legacy: event bus (all devices share one event type)
 
@@ -298,10 +222,12 @@ automation:
 
 ## Troubleshooting
 
-**Device won't join Wi-Fi** — Prefer USB **Configure Wi-Fi** after flash. SoftAP fallback: factory reset (BOOT 10s), then re-provision. ESP32-C3 Super Mini needs `output_power: 8.5dB` (already set in this firmware).
+**Device won't join Wi-Fi** — Prefer USB **Configure Wi-Fi** after flash. SoftAP fallback: factory reset (BOOT 10s), then re-provision.
 
-**Board runs warm** — Super Mini boards run warm under Wi-Fi. SoftAP is hotter than STA. After joining home Wi-Fi (with LIGHT power save), it should settle cooler. Stop if too hot to touch.
+**Board runs warm** — Super Mini boards run warm under Wi-Fi + BLE. SoftAP is hotter than STA. After joining home Wi-Fi (with LIGHT power save), it should settle cooler. Stop if too hot to touch.
 
 **Flasher cannot open the port** — Use a data-capable USB-C cable. Hold BOOT, tap RST, release BOOT, then retry.
+
+**Private BLE says no adapter** — Confirm this device is online in ESPHome (it exposes `bluetooth_proxy`). BLE scan starts only after HA is connected.
 
 **OTA check fails** — Ensure GitHub Pages is deployed after a release and the device can reach the internet.

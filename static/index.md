@@ -1,6 +1,6 @@
 # DFLTech Switch
 
-ESPHome firmware for an ESP32-C3 Super Mini wall switch with 6 inputs (single, double, and hold events sent to Home Assistant).
+ESPHome firmware for an ESP32-S3 Super Mini wall switch with 6 inputs (single, double, and hold events sent to Home Assistant). The same firmware also acts as a BLE Proxy for Home Assistant (`bluetooth_proxy`).
 
 ## First-time installation
 
@@ -34,4 +34,4 @@ Firmware updates are offered automatically in Home Assistant when a new release 
 
 ## Factory reset
 
-Hold the **BOOT** button (GPIO9) on the Super Mini for **10 seconds**, then release. Wi-Fi credentials are erased and the setup access point starts again.
+Hold the **BOOT** button (GPIO0) on the Super Mini for **10 seconds**, then release. Wi-Fi credentials are erased and the setup access point starts again.
